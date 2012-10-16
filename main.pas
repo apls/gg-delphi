@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ExtCtrls, ComCtrls, Math;
+  Dialogs, StdCtrls, Math, IniFiles, ComCtrls, ExtCtrls;
 
 type
   TTopic = class(TObject)
@@ -31,20 +31,43 @@ type
     btnQuit: TButton;
     imgCorrect: TImage;
     imgWrong: TImage;
+    pnlConfig: TPanel;
+    lbl1: TLabel;
+    edtCount: TEdit;
+    lbl2: TLabel;
+    lbl3: TLabel;
+    edtLevel: TEdit;
+    edtPeriod: TEdit;
+    btn1: TButton;
+    edtPassword: TEdit;
+    lbl4: TLabel;
+    lbl5: TLabel;
+    edtExe: TEdit;
+    dlgOpen1: TOpenDialog;
     procedure edtPwdChange(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure btnStartClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure btnQuitClick(Sender: TObject);
     procedure btnOptionClick(Sender: TObject);
+    procedure btnConfigClick(Sender: TObject);
+    procedure btn1Click(Sender: TObject);
+    procedure edtConfigChange(Sender: TObject);
+    procedure btnSkipClick(Sender: TObject);
+    procedure edtExeDblClick(Sender: TObject);
   private
     { Private declarations }
     Count: Integer;
     Level: Integer;
+    Period: Integer;
+    Password: String;
+    ExePath: String;
     Current: Integer;
     Topics: array of TTopic;
+    IniFile: TIniFile;
     procedure InitTopics;
-    procedure LoadTopic;
+    procedure LoadTopic;   
+    procedure LoadExe;
   public
     { Public declarations }
   end;
@@ -78,7 +101,7 @@ procedure TFormMain.edtPwdChange(Sender: TObject);
 var
   b: Boolean;
 begin
-  b := edtPwd.Text = 'pwd';
+  b := edtPwd.Text = Password;
   btnSkip.Enabled := b;
   btnConfig.Enabled := b;
 end;
@@ -100,11 +123,21 @@ begin
   pnlMathTest.Show;
 end;
 
+procedure TFormMain.LoadExe;
+begin
+  WinExec(PChar(ExePath), SW_SHOW); 
+  Close;
+end;
+
 procedure TFormMain.FormCreate(Sender: TObject);
 begin
-  Count := 10;
-  Level := 15;
-  Current := -1;
+  IniFile := TIniFile.Create('gg.ini');
+  Count := IniFile.ReadInteger('Main', 'Count', 10);
+  Level := IniFile.ReadInteger('Main', 'Level', 15);
+  Period := IniFile.ReadInteger('Main', 'Period', 15);
+  Password := IniFile.ReadString('main', 'Password', '');
+  ExePath := IniFile.ReadString('main', 'ExePath', '');
+  edtPwdChange(nil);
 end;
 
 procedure TFormMain.LoadTopic;
@@ -116,7 +149,7 @@ begin
 	Inc(Current);
 	if Current = Count then
   begin
-    Close;
+    LoadExe;
     Exit;
   end;
        
@@ -155,6 +188,7 @@ begin
 
   for i:=0 to Count - 1 do
   begin
+    Randomize; 
     Topics[i] := TTopic.Create;
     a := Random(Level);
     b := Random(Level);
@@ -181,8 +215,8 @@ begin
 		c := c - Random(min(c, 5));
 		for a := 0 to 4 do
     begin
+			Topics[i].opt[a] := c;  
       Inc(c);
-			Topics[i].opt[a] := c;
     end;
   end;  
 end;
@@ -210,6 +244,8 @@ begin
     begin
       imgCorrect.Left := x;
       imgCorrect.Show;
+      Delay(800);
+      LoadTopic;
     end
     else
     begin
@@ -217,9 +253,78 @@ begin
       imgWrong.Show;
     end;
   end;
-  
-  Delay(500);
-  LoadTopic;
+end;
+
+procedure TFormMain.btnConfigClick(Sender: TObject);
+begin
+  edtCount.Tag := Count;
+  edtCount.Text := IntToStr(Count);
+  edtLevel.Tag := Level;
+  edtLevel.Text := IntToStr(Level);
+  edtPeriod.Tag := Period;
+  edtPeriod.Text := IntToStr(Period);
+  edtExe.Text := ExePath;
+  pnlConfig.Show;
+  pnlMain.Hide;
+end;
+
+procedure TFormMain.btn1Click(Sender: TObject);
+var
+  v: Integer;
+begin
+  if TryStrToInt(edtCount.Text, v) then
+  begin
+    Count := v;
+    IniFile.WriteInteger('Main', 'Count', v);
+  end;
+  if TryStrToInt(edtLevel.Text, v) then
+  begin
+    Level := v;
+    IniFile.WriteInteger('Main', 'Level', v);
+  end;
+  if TryStrToInt(edtPeriod.Text, v) then
+  begin
+    Period := v;
+    IniFile.WriteInteger('Main', 'Period', v);
+  end;
+  if edtPassword.Text <> '' then
+  begin
+    Password := edtPassword.Text;
+    IniFile.WriteString('Main', 'Password', Password);
+  end;
+  if edtExe.Text <> '' then
+  begin
+    ExePath := edtExe.Text;
+    IniFile.WriteString('Main', 'ExePath', ExePath);
+  end;
+  pnlMain.Show;
+  pnlConfig.Hide;
+end;
+
+procedure TFormMain.edtConfigChange(Sender: TObject);
+var
+  v: Integer;
+  e: TEdit;
+begin
+  e := Sender as TEdit;
+  if TryStrToInt(e.Text, v) then
+    e.Tag := v
+  else
+  begin
+    e.Text := IntToStr(e.Tag);
+    e.SelectAll;
+  end; 
+end;
+
+procedure TFormMain.btnSkipClick(Sender: TObject);
+begin
+  LoadExe;
+end;
+
+procedure TFormMain.edtExeDblClick(Sender: TObject);
+begin
+  if dlgOpen1.Execute then
+    edtExe.Text := dlgOpen1.FileName;
 end;
 
 end.
